@@ -839,6 +839,8 @@ safe_report = report.to_dict(redact_sample_values=True)
 
 Use `report.to_dict(redact_sample_values=True)` when sharing reports outside your team and you want to avoid exposing raw example/sample values.
 
+> **Scoring Contract:** The `quality_score` starts at 100.0 and subtracts capped penalties for duplicates, nulls, and suggested dtype mismatches. The `score_components` field exposes these penalties as negative values. (Note: Semantic-validity penalties are intentionally out of scope for the current implementation.)
+
 ### 1. Terminal Representation (Simplified Example)
 *A simplified view of the standard string representation of the report object:*
 
@@ -848,6 +850,8 @@ DataQualityReport(
     column_count=3,
     memory_usage=733,
     duplicate_rows=0,
+    quality_score=100.0,
+    score_components={},
     columns={
         'user_id': ColumnProfile(dtype='int64', semantic_type='identifier', unique_count=4),
         'email': ColumnProfile(dtype='string', semantic_type='categorical', null_count=1, unique_ratio=0.666667, min=13, max=13, mean=13.0),
@@ -866,6 +870,8 @@ DataQualityReport(
   "memory_usage": 733,
   "duplicate_rows": 0,
   "duplicate_ratio": 0.0,
+  "quality_score": 100.0,
+  "score_components": {},
   "columns": {
     "user_id": {
       "dtype": "int64",
@@ -914,6 +920,7 @@ DataQualityReport(
 | **Column Count** | 3 |
 | **Memory Usage** | 733 bytes |
 | **Duplicates** | 0 (0.0%) |
+| **Quality Score** | 100.0 |
 <br>
 
 ## 🗺️ Roadmap
