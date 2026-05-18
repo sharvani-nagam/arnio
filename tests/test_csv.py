@@ -196,6 +196,40 @@ class TestReadCsv:
         assert pd.isna(df["value"].iloc[0])
         assert df["value"].iloc[1] == 1234
 
+    def test_invalid_grouped_integer_values_become_null(self, tmp_path):
+        csv_content = 'value\n"1,234"\n"+1,234"\n"-1,234"\n"12,34"\n"1,,234"\n"123,45"\n"-12,34"\n'
+        csv_file = tmp_path / "invalid_grouping.csv"
+        csv_file.write_text(csv_content)
+        frame = ar.read_csv(csv_file, thousands_separator=",")
+        df = ar.to_pandas(frame)
+        assert df["value"].iloc[0] == 1234
+        assert df["value"].iloc[1] == 1234
+        assert df["value"].iloc[2] == -1234
+        invalid_indices = [3, 4, 5, 6]
+        for idx in invalid_indices:
+            assert pd.isna(df["value"].iloc[idx])
+
+    def test_invalid_grouped_float_values_become_null(self, tmp_path):
+        csv_content = 'value\n"1,234.56"\n"12,34.56"\n"1,,234.56"\n"123,45.67"'
+        csv_file = tmp_path / "invalid_float_grouping.csv"
+        csv_file.write_text(csv_content)
+        frame = ar.read_csv(csv_file, thousands_separator=",")
+        df = ar.to_pandas(frame)
+        assert df["value"].iloc[0] == 1234.56
+        invalid_indices = [1, 2, 3]
+        for idx in invalid_indices:
+            assert pd.isna(df["value"].iloc[idx])
+
+    def test_alphanumeric_grouped_values_remain_string(self, tmp_path):
+        csv_content = 'value\n"1a,234"\n"123,abc"\n'
+        csv_file = tmp_path / "alnum.csv"
+        csv_file.write_text(csv_content)
+        frame = ar.read_csv(csv_file, thousands_separator=",")
+        df = ar.to_pandas(frame)
+        assert frame.dtypes["value"] == "string"
+        assert df["value"].iloc[0] == "1a,234"
+        assert df["value"].iloc[1] == "123,abc"
+
     def test_large_csv(self, large_csv):
         frame = ar.read_csv(large_csv)
         assert frame.shape == (1000, 3)
