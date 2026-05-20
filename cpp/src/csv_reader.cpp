@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
@@ -11,6 +12,7 @@
 #include <locale>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <unordered_set>
 
 namespace arnio {
@@ -231,15 +233,12 @@ inline bool is_special_float_token(const std::string& lower) {
 
 inline bool try_parse_int64(const std::string& cleaned, int64_t& out) {
     if (cleaned.empty()) return false;
-    std::istringstream iss(cleaned);
-    iss.imbue(std::locale::classic());
-    long long val = 0;
-    iss >> val;
-    if (iss.fail() || !iss.eof()) return false;
-    if (val < std::numeric_limits<int64_t>::min() || val > std::numeric_limits<int64_t>::max())
-        return false;
-    out = static_cast<int64_t>(val);
-    return true;
+    const char* start = cleaned.data();
+    const char* end = cleaned.data() + cleaned.size();
+    if (*start == '+') ++start;
+    if (start >= end) return false;
+    auto [ptr, ec] = std::from_chars(start, end, out);
+    return ec == std::errc() && ptr == end;
 }
 
 inline bool try_parse_float64(const std::string& cleaned, double& out) {
@@ -255,6 +254,16 @@ inline bool try_parse_float64(const std::string& cleaned, double& out) {
         }
         return true;
     }
+
+    // Some standard libraries parse hex-like tokens (e.g. "0xFF") as floating
+    // values, which would incorrectly classify hex integers as FLOAT64.
+    // Keep behavior consistent across platforms by rejecting 0x-prefixed tokens.
+    if ((lower.size() >= 2 && lower[0] == '0' && lower[1] == 'x') ||
+        (lower.size() >= 3 && (lower[0] == '+' || lower[0] == '-') && lower[1] == '0' &&
+         lower[2] == 'x')) {
+        return false;
+    }
+
     std::istringstream iss(cleaned);
     iss.imbue(std::locale::classic());
     double val = 0.0;
